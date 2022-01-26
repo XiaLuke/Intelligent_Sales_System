@@ -1,0 +1,24 @@
+<html>
+    <head></head>
+    <body>
+        ## 我是一个没有感情的注释
+        ${username},你好啊！！！
+##        对象数据获取
+        ${employee.username} ====== ${employee.age}
+        $employee.username ====== $employee.age
+        $!employee.username ====== $!employee.age
+
+        ##设置变量
+        #set($person = "汤木")
+        $person
+        ## 集合
+        #set($names=["汤母", "吉瑞", "肉丝"])
+        <p>$names.get(1)</p>
+
+        <ul>
+            #foreach($l in $names)
+                <li>$l</li>
+            #end
+        </ul>
+    </body>
+</html>

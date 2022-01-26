@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <!-- 真假过滤器(shiroFilter),安全管理器(securityManager),AiSellRealm(自定义realm)，注解支持 -->
+    <!--
+            DefaultWebSecurityManager:创建Shiro的核心对象
+                相当于： SecurityManager sm = new DefaultWebSecurityManager(myRealm);
+    -->
+    <bean id="securityManager" class="org.apache.shiro.web.mgt.DefaultWebSecurityManager">
+        <property name="realm" ref="jdbcRealm"/>
+    </bean>
+
+
+    <!-- 等会需要改成自己的Realm -->
+    <bean id="jdbcRealm" class="com.xf.web.shiro.AiSellRealm">
+        <!--密码的匹配器-->
+        <property name="credentialsMatcher">
+            <bean class="org.apache.shiro.authc.credential.HashedCredentialsMatcher">
+                <property name="hashAlgorithmName" value="MD5"/>
+                <property name="hashIterations" value="10" />
+            </bean>
+        </property>
+    </bean>
+
+    <!--  这三个留着，你的权限就可以支持注解功能  -->
+    <bean id="lifecycleBeanPostProcessor" class="org.apache.shiro.spring.LifecycleBeanPostProcessor"/>
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator"
+          depends-on="lifecycleBeanPostProcessor"/>
+    <bean class="org.apache.shiro.spring.security.interceptor.AuthorizationAttributeSourceAdvisor">
+        <property name="securityManager" ref="securityManager"/>
+    </bean>
+
+
+    <!--
+        这个是真正的shiro过滤器
+            要求:这个id的名称必需和web.xml中的那个过滤器名称一致
+    -->
+    <bean id="shiroFilter" class="org.apache.shiro.spring.web.ShiroFilterFactoryBean">
+        <property name="securityManager" ref="securityManager"/>
+        <!-- 登录地址:如果你没有登录，就会去这个地方  -->
+        <property name="loginUrl" value="/login"/>
+        <!-- 登录成功会进入的页面 -->
+        <property name="successUrl" value="/s/main.jsp"/>
+        <!-- 没有权限进入的页面 -->
+        <property name="unauthorizedUrl" value="/s/unauthorized.jsp"/>
+        <!--
+            路径 = anon -> 没有登录也可以访问这个路径
+            路径 = perms[user:index] -> 该路径需要相应的权限才可以进入
+             /** = authc -> 所有路径都要权限拦截
+        -->
+        <!--
+        <property name="filterChainDefinitions">
+            <value>
+                /s/login.jsp = anon
+                /login = anon
+                /employee/index = perms[employee:index]
+                /dept/index = perms[dept:index]
+                /** = authc
+            </value>
+        </property>
+        -->
+        <!--<property name="filterChainDefinitionMap"-->
+        <property name="filterChainDefinitionMap" ref="filterChainDefinitionMap" />
+        <!--自定义过滤器第②步:把自定过滤器加入到核心过滤器中-->
+        <property name="filters">
+            <map>
+                <entry key="aiSellPerms" value-ref="aiSellPerms" />
+            </map>
+        </property>
+    </bean>
+    <!--实体工厂bean，把它返回值也变成一个bean-->
+    <bean id="filterChainDefinitionMap" factory-bean="filterChainDefinitionMapFactory" factory-method="builderFilterChainDefinitionMap" />
+    <!-- 拿到生成map的工厂 -->
+    <bean id="filterChainDefinitionMapFactory" class="com.xf.web.shiro.FilterChainDefinitionMapFactory" />
+
+    <!--自定义过滤器第①步:配置你的自定义过滤器-->
+    <bean id="aiSellPerms" class="com.xf.web.shiro.AiSellPermissionsAuthorizationFilter" />
+
+</beans>

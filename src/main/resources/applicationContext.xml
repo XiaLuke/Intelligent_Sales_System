@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+       http://www.springframework.org/schema/data/jpa
+       http://www.springframework.org/schema/data/jpa/spring-jpa.xsd
+">
+
+    <!--service的扫描-->
+    <context:component-scan base-package="com.xf.service" />
+
+    <!--读取jdbc.properties
+        这里必需写classpath:，不然web环境下就读取不到这个文件
+    -->
+    <context:property-placeholder location="classpath:jdbc.properties" />
+    <!--配置datasource-->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driverClassName}" />
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+    </bean>
+
+    <!--alt+ins配置: EntityManagerFactory-->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <!--连接数据库的基本配置-->
+        <property name="dataSource" ref="dataSource"/>
+        <!-- packagesToScan:扫描相应的包(jpa的扫描)  -->
+        <property name="packagesToScan" value="com.xf.domain" />
+        <!--
+            jpaVendorAdapter:JPA的适配器[确定这个jpa是哪种框架来实现的]
+                JPA:ORM规范 -> 有多种实现(hibernate,openjpa,...)
+        -->
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <!--方言-->
+                <property name="databasePlatform" value="org.hibernate.dialect.MySQLDialect" />
+                <!--是否显示sql-->
+                <property name="showSql" value="true" />
+                <!--
+                    建表策略 DDL:建库建表建约束
+                        true:相当于update
+                        false:相当于什么都不做
+                 -->
+                <property name="generateDdl" value="false" />
+            </bean>
+        </property>
+    </bean>
+
+    <!--配置相应的事务对象-->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+        <property name="entityManagerFactory" ref="entityManagerFactory" />
+    </bean>
+
+
+    <!--
+        配置事务的支持(支持使用注解加事务)
+            它默认会去找一个transactionManager的bean
+    -->
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+    <!--
+        配置SpringDataJpa -> 让咱们的某一层的代码支持SpringDataJpa
+            只要发现咱们的接口继承了JpaRepository,它就会自动去完成相应的CRUD
+    -->
+    <jpa:repositories base-package="com.xf.repository"
+                      entity-manager-factory-ref="entityManagerFactory"
+                      transaction-manager-ref="transactionManager"
+                      factory-class="com.xf.repository.BaseRepositoryFactoryBean"
+    />
+
+    <import resource="classpath:applicationContext-shiro.xml" />
+
+    <!--扫描commmon包-->
+    <context:component-scan base-package="com.xf.common" />
+</beans>
